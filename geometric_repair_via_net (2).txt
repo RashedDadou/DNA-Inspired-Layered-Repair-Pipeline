@@ -1,0 +1,45 @@
+def geometric_repair_via_net(
+    self,
+    img: Image.Image,
+    mask: Image.Image,
+    net: Image.Image,
+    prompt: str,
+    strength: float = 0.32,
+    steps: int = 22,
+    use_ip_adapter: bool = True,
+    reference_face: Optional[Image.Image] = None,  # صورة وجه مرجعية لـ IP-Adapter
+) -> Image.Image:
+    """
+    إعادة ترميم هندسي مع دعم IP-Adapter للحفاظ على هوية الوجه
+    """
+    if use_ip_adapter and self.ip_adapter is not None and reference_face is not None:
+        print("استخدام IP-Adapter FaceID للحفاظ على هوية الوجه")
+        result = self.ip_adapter(
+            prompt=prompt,
+            negative_prompt="blurry, deformed, low detail, artifacts",
+            image=img,
+            mask_image=mask,
+            control_image=net,
+            strength=strength,
+            num_inference_steps=steps,
+            guidance_scale=7.5,
+            faceid_embeds=reference_face,  # مرجع الوجه
+        ).images[0]
+    else:
+        # الطريقة العادية (ControlNet فقط)
+        result = self.pipeline(
+            prompt=prompt,
+            negative_prompt="blurry, deformed, low detail, artifacts",
+            image=img,
+            mask_image=mask,
+            control_image=net,
+            strength=strength,
+            num_inference_steps=steps,
+            guidance_scale=7.5,
+        ).images[0]
+
+    # تلميع خفيف
+    result = ImageEnhance.Sharpness(result).enhance(1.10)
+    result = ImageEnhance.Contrast(result).enhance(1.05)
+
+    return result

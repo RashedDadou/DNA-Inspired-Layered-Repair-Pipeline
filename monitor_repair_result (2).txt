@@ -1,0 +1,67 @@
+from skimage.metrics import structural_similarity as ssim
+from scipy.stats import wasserstein_distance
+
+def monitor_repair_result(
+    original: Image.Image,
+    repaired: Image.Image,
+    mask: Image.Image,
+    min_lpips_gain: float = 0.005,
+    max_lpips_threshold: float = 0.30,
+    detail_loss_threshold: float = 0.08,
+    ssim_threshold: float = 0.92,
+    color_deviation_threshold: float = 0.15,
+) -> Dict[str, any]:
+    """
+    Monitoring Module المحسن – يقيس أكثر:
+    - LPIPS (جودة عامة)
+    - SSIM (تشابه هيكلي)
+    - Color Histogram Deviation (فرق الألوان)
+    - Edge Preservation (حفظ الحواف)
+    """
+    from torchmetrics.image import LearnedPerceptualImagePatchSimilarity
+    import torch
+
+    lpips = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to(device)
+
+    # تحويل إلى tensors
+    orig_tensor = torch.from_numpy(np.array(original)).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+    rep_tensor = torch.from_numpy(np.array(repaired)).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+
+    lpips_score = lpips(orig_tensor, rep_tensor).item()
+
+    # SSIM (Structural Similarity)
+    orig_gray = cv2.cvtColor(np.array(original), cv2.COLOR_RGB2GRAY)
+    rep_gray = cv2.cvtColor(np.array(repaired), cv2.COLOR_RGB2GRAY)
+    ssim_score = ssim(orig_gray, rep_gray, data_range=orig_gray.max() - orig_gray.min())
+
+    # Color Histogram Deviation (Wasserstein distance بين histograms)
+    orig_hist = cv2.calcHist([orig_gray], [0], None, [256], [0, 256]).flatten()
+    rep_hist = cv2.calcHist([rep_gray], [0], None, [256], [0, 256]).flatten()
+    color_dev = wasserstein_distance(orig_hist, rep_hist)
+
+    # Edge Preservation (Laplacian variance)
+    lap_orig = cv2.Laplacian(orig_gray, cv2.CV_64F).var()
+    lap_rep = cv2.Laplacian(rep_gray, cv2.CV_64F).var()
+    detail_loss = max(0, (lap_orig - lap_rep) / lap_orig) if lap_orig > 0 else 0
+
+    # تقرير شامل
+    report = {
+        "lpips_score": lpips_score,
+        "ssim_score": ssim_score,
+        "color_deviation": color_dev,
+        "detail_loss_ratio": detail_loss,
+        "overall_quality_score": round((ssim_score * 100 + (1 - lpips_score) * 100 + (1 - detail_loss) * 100) / 3, 1),
+        "needs_correction": lpips_score > max_lpips_threshold or ssim_score < ssim_threshold or detail_loss > detail_loss_threshold or color_dev > color_deviation_threshold,
+        "issues": []
+    }
+
+    if lpips_score > max_lpips_threshold:
+        report["issues"].append("LPIPS مرتفع: جودة عامة منخفضة")
+    if ssim_score < ssim_threshold:
+        report["issues"].append("SSIM منخفض: تشابه هيكلي ضعيف")
+    if detail_loss > detail_loss_threshold:
+        report["issues"].append("فقدان تفاصيل ملحوظ")
+    if color_dev > color_deviation_threshold:
+        report["issues"].append("فرق ألوان كبير: تشوهات لونية")
+
+    return report

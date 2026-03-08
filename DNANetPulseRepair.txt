@@ -1,0 +1,40 @@
+from diffusers import IPAdapterFaceIDPlusPipeline, ControlNetModel
+
+class DNANetPulseRepair:
+    def __init__(
+        self,
+        controlnet_union: str = "lllyasviel/sd-controlnet-union-sdxl-1.0",
+        ip_adapter_faceid: str = "h94/IP-Adapter-FaceID-PlusV2",
+        sd_model: str = "runwayml/stable-diffusion-inpainting",
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        use_ip_adapter: bool = True,  # ← خيار جديد
+    ):
+        self.device = device
+        self.dtype = torch.float16
+
+        # ControlNet Union
+        self.controlnet = ControlNetModel.from_pretrained(controlnet_union, torch_dtype=self.dtype).to(device)
+
+        # IP-Adapter FaceID Plus V2 (للوجوه)
+        self.ip_adapter = None
+        if use_ip_adapter:
+            try:
+                self.ip_adapter = IPAdapterFaceIDPlusPipeline.from_pretrained(
+                    ip_adapter_faceid,
+                    torch_dtype=self.dtype,
+                ).to(device)
+                print("IP-Adapter FaceID Plus V2 محمل بنجاح")
+            except Exception as e:
+                print("فشل تحميل IP-Adapter:", e)
+                self.ip_adapter = None
+
+        # Pipeline الأساسي
+        self.pipeline = StableDiffusionControlNetInpaintPipeline.from_pretrained(
+            sd_model,
+            controlnet=self.controlnet,
+            torch_dtype=self.dtype,
+            safety_checker=None,
+        ).to(device)
+
+        self.pipeline.enable_attention_slicing()
+        self.pipeline.enable_model_cpu_offload()

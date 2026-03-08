@@ -1,0 +1,9 @@
+{
+    "pose_gene": "neutral pose",
+    "layout_gene": "balanced composition",
+    "style_gene": "photorealistic",
+    "lighting_gene": "dramatic golden hour",
+    "camera_gene": "medium shot",
+    "mood_gene": "mysterious",
+    "color_seed_gene": "vibrant natural"
+}

@@ -1,0 +1,227 @@
+def full_dna_repair_pipeline(
+    ...,
+    use_latent_pulse: bool = False,  # ← الخيار الجديد
+    latent_strength: float = 0.18,
+    latent_steps: int = 12,
+):
+    ...
+    # داخل الدالة، عدّل استدعاء النبض كده:
+    pulsed_image = dna_inspired_color_pulse(
+        img=repaired_geometry,
+        mask=mask,
+        prompt=filtered_prompt,
+        pulse_steps=pulse_steps,
+        positive_boost=positive_boost,
+        negative_suppress=negative_suppress,
+        latent_mode=use_latent_pulse,
+        pipeline=self.pipeline,  # مرر الـ pipeline
+        strength=latent_strength,
+        latent_steps=latent_steps,
+    )
+
+
+
+use_latent_pulse: bool = False,
+latent_strength_base: float = 0.18,
+latent_steps_per_pulse: int = 12,
+
+
+pulsed_image = self.dna_inspired_color_pulse(
+    img=repaired_geometry,
+    mask=mask,
+    prompt=filtered_prompt,
+    pulse_steps=pulse_steps,
+    positive_boost=positive_boost,
+    negative_suppress=negative_suppress,
+    latent_mode=use_latent_pulse,
+    pipeline=self.pipeline,
+    latent_strength_base=latent_strength_base,
+    latent_steps_per_pulse=latent_steps_per_pulse,
+)
+
+
+from skimage.metrics import structural_similarity as ssim
+import cv2
+import numpy as np
+
+# داخل full_dna_repair_pipeline (بعد النبض أو الـ pulsed_image)
+
+# 1. حساب SSIM قبل التلميع النهائي
+orig_gray = cv2.cvtColor(np.array(input_image), cv2.COLOR_RGB2GRAY)
+final_gray = cv2.cvtColor(np.array(pulsed_image), cv2.COLOR_RGB2GRAY)
+
+ssim_score = ssim(orig_gray, final_gray, data_range=orig_gray.max() - orig_gray.min())
+
+print(f"SSIM قبل التلميع النهائي: {ssim_score:.4f}")
+
+# 2. تعديل ديناميكي لقيم التلميع بناءً على SSIM
+if ssim_score > 0.93:  # هيكل محافظ عليه جدًا → نزود الـ polish
+    sharpen_factor = final_sharpen * 1.15   # نزود sharpness
+    contrast_factor = final_contrast * 1.10
+    color_factor = final_color * 1.08
+elif ssim_score > 0.85:  # هيكل جيد → polish عادي
+    sharpen_factor = final_sharpen
+    contrast_factor = final_contrast
+    color_factor = final_color
+else:  # هيكل متغير كتير → نقلل الـ polish عشان ما نزودش التشوه
+    sharpen_factor = final_sharpen * 0.80
+    contrast_factor = final_contrast * 0.90
+    color_factor = final_color * 0.95
+    print("تحذير: SSIM منخفض – تم تقليل التلميع للحفاظ على الهيكل")
+
+# 3. تطبيق التلميع النهائي المعدل
+final = ImageEnhance.Sharpness(pulsed_image).enhance(sharpen_factor)
+final = ImageEnhance.Contrast(final).enhance(contrast_factor)
+final = ImageEnhance.Color(final).enhance(color_factor)
+
+final.save(output_path)
+print(f"تم حفظ النتيجة النهائية (مع SSIM-aware polish) → {output_path}")
+
+# إضافة SSIM في التقرير النهائي
+final_report["ssim_before_final_polish"] = round(ssim_score, 4)
+final_report["applied_sharpen"] = round(sharpen_factor, 3)
+final_report["applied_contrast"] = round(contrast_factor, 3)
+final_report["applied_color"] = round(color_factor, 3)
+
+
+def full_dna_repair_pipeline(
+    ...,
+    use_ip_adapter: bool = True,
+    reference_face: Optional[Image.Image] = None,  # صورة وجه مرجعية (لـ FaceID)
+):
+    ...
+    repaired_geometry = self.geometric_repair_via_net(
+        img=input_image,
+        mask=mask,
+        net=net,
+        prompt=filtered_prompt,
+        strength=0.32,
+        use_ip_adapter=use_ip_adapter,
+        reference_face=reference_face,
+    )
+
+
+def full_dna_repair_pipeline(
+    ...,
+    use_ip_adapter: bool = True,
+    reference_face: Optional[Image.Image] = None,  # صورة وجه مرجعية (لـ FaceID)
+    use_controlnet_union: bool = True,
+):
+    ...
+    repaired_geometry = self.geometric_repair_via_net(
+        img=input_image,
+        mask=mask,
+        net=net,
+        prompt=filtered_prompt,
+        strength=0.32,
+        use_ip_adapter=use_ip_adapter,
+        reference_face=reference_face,
+    )
+
+
+from typing import List, Dict, Tuple, Optional
+
+def full_dna_repair_pipeline(
+    self,
+    input_image: Image.Image,
+    raw_prompt: str,
+    masks: List[Dict],  # ← الجديد: list من الماسكات مع باراميتراتهم
+    # مثال: [{'mask': mask1, 'strength': 0.4, 'pulse_steps': 8, 'colors': [(255,0,0), ...]}, ...]
+    reference_face: Optional[Image.Image] = None,
+    use_latent_pulse: bool = False,
+    latent_strength_base: float = 0.18,
+    latent_steps_per_pulse: int = 12,
+    final_sharpen: float = 1.14,
+    final_contrast: float = 1.06,
+    final_color: float = 1.04,
+    max_retries: int = 2,
+    output_path: str = "dna_multi_mask_final.jpg",
+) -> Tuple[Image.Image, Dict]:
+    """
+    الـ Pipeline النهائي مع دعم multi-mask
+    """
+    filtered_prompt, scene_genes = prepare_scene_prompt_and_genes(raw_prompt, input_image)
+    print("Filtered Prompt:", filtered_prompt)
+
+    current = input_image
+
+    # معالجة كل ماسك على حدة
+    for mask_config in masks:
+        mask = mask_config["mask"]
+        strength = mask_config.get("strength", 0.32)
+        pulse_steps = mask_config.get("pulse_steps", pulse_steps)
+        colors = mask_config.get("colors", None)
+
+        # 1. Net للماسك ده
+        net = self.generate_net_structure(input_image, mask, control_type="union")
+
+        # 2. DNA Light Layer
+        dna_layer = self.create_dna_light_layer(input_image.size)
+
+        # 3. Geometric Repair
+        repaired = self.geometric_repair_via_net(
+            img=current,
+            mask=mask,
+            net=net,
+            prompt=filtered_prompt,
+            strength=strength,
+            reference_face=reference_face,
+        )
+
+        # 4. Colored Layers (لو موجودة ألوان مخصصة للماسك ده)
+        if colors:
+            colored = self.add_colored_dna_layers(net, mask, base_colors=colors, blend_mode="density")
+            repaired = Image.alpha_composite(repaired.convert("RGBA"), colored)
+
+        # 5. Pulse (pixel أو latent)
+        pulsed = self.dna_inspired_color_pulse(
+            img=repaired,
+            mask=mask,
+            prompt=filtered_prompt,
+            pulse_steps=pulse_steps,
+            positive_boost=positive_boost,
+            negative_suppress=negative_suppress,
+            latent_mode=use_latent_pulse,
+            pipeline=self.pipeline,
+            latent_strength_base=latent_strength_base,
+            latent_steps_per_pulse=latent_steps_per_pulse,
+        )
+
+        # دمج النتيجة مع الصورة الحالية (alpha composite للمناطق المعالجة)
+        current = Image.alpha_composite(current.convert("RGBA"), pulsed.convert("RGBA")).convert("RGB")
+
+    # Monitoring + Post-Filter + Decision Flow (على النتيجة النهائية)
+    monitoring_report = self.monitor_repair_result(input_image, current, mask=masks[0]["mask"] if masks else None)
+    correction_prompt, needs_retry = self.post_monitor_filter(monitoring_report, filtered_prompt, filtered_prompt)
+
+    # Final Polish + SSIM-aware
+    orig_gray = cv2.cvtColor(np.array(input_image), cv2.COLOR_RGB2GRAY)
+    final_gray = cv2.cvtColor(np.array(current), cv2.COLOR_RGB2GRAY)
+    ssim_score = ssim(orig_gray, final_gray, data_range=orig_gray.max() - orig_gray.min())
+
+    if ssim_score > 0.93:
+        sharpen_factor = final_sharpen * 1.15
+        contrast_factor = final_contrast * 1.10
+        color_factor = final_color * 1.08
+    else:
+        sharpen_factor = final_sharpen * 0.85
+        contrast_factor = final_contrast * 0.90
+        color_factor = final_color * 0.95
+
+    final = ImageEnhance.Sharpness(current).enhance(sharpen_factor)
+    final = ImageEnhance.Contrast(final).enhance(contrast_factor)
+    final = ImageEnhance.Color(final).enhance(color_factor)
+
+    final.save(output_path)
+    print(f"تم حفظ النتيجة النهائية (multi-mask) → {output_path}")
+
+    final_report = {
+        "final_lpips": monitoring_report.get("lpips_score", 0.0),
+        "final_ssim": ssim_score,
+        "final_quality_score": monitoring_report.get("overall_quality_score", 0.0),
+        "retries_used": 0,
+        "status": "success",
+        "masks_processed": len(masks),
+    }
+
+    return final, final_report

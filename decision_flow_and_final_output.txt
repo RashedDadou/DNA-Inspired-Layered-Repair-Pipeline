@@ -1,0 +1,58 @@
+def decision_flow_and_final_output(
+    current_image: Image.Image,
+    original_image: Image.Image,
+    mask: Image.Image,
+    monitoring_report: Dict,
+    prompt: str,
+    max_retries: int = 3,
+    lpips_threshold: float = 0.30,
+    detail_loss_threshold: float = 0.10,
+    final_sharpen: float = 1.12,
+    final_contrast: float = 1.06,
+    final_color: float = 1.04,
+) -> Tuple[Image.Image, Dict]:
+    """
+    Decision Flow + Final Output
+    - يقرر بناءً على تقرير Monitoring إذا نعيد أو نخرج
+    - يطبّق تلميع نهائي خفيف
+    - يرجع الصورة النهائية + تقرير كامل
+    """
+    retries_left = max_retries
+    correction_prompt = prompt
+
+    while retries_left > 0:
+        if not monitoring_report["needs_correction"]:
+            break  # النتيجة جيدة، نخرج
+
+        # توليد prompt تصحيحي بناءً على المشاكل
+        if "LPIPS مرتفع" in monitoring_report["issues"]:
+            correction_prompt += ", sharper details, higher fidelity, realistic textures"
+        if "فقدان تفاصيل" in monitoring_report["issues"]:
+            correction_prompt += ", enhance fine details, preserve original structure, high resolution"
+
+        # إعادة الـ Diffusion / Re-animation (placeholder – يمكن استدعاء الدالة السابقة)
+        # هنا نفترض إنك بتعيد استدعاء الـ pipeline أو الـ pulse
+        # للبساطة، هنفترض إن الـ current_image هتتعدل (في الواقع هتستدعي الـ repair loop)
+        print(f"إعادة ترميم... (باقي {retries_left} محاولات)")
+        # current_image = self.repair(...)  # ← استدعاء الـ repair loop هنا
+        retries_left -= 1
+
+        # إعادة Monitoring بعد التصحيح (placeholder)
+        # monitoring_report = monitor_repair_result(original_image, current_image, mask)
+
+    # تلميع نهائي خفيف (Final Polish)
+    final = ImageEnhance.Sharpness(current_image).enhance(final_sharpen)
+    final = ImageEnhance.Contrast(final).enhance(final_contrast)
+    final = ImageEnhance.Color(final).enhance(final_color)
+
+    # تقرير نهائي
+    final_report = {
+        "final_lpips": monitoring_report.get("lpips_score", 0.0),
+        "final_detail_loss": monitoring_report.get("detail_loss_ratio", 0.0),
+        "final_quality_score": monitoring_report.get("overall_quality_score", 0.0),
+        "retries_used": max_retries - retries_left,
+        "status": "success" if not monitoring_report["needs_correction"] else "partial (max retries reached)",
+        "issues_resolved": monitoring_report["issues"]
+    }
+
+    return final.convert("RGB"), final_report

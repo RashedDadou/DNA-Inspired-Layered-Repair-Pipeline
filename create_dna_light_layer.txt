@@ -1,0 +1,57 @@
+def create_dna_light_layer(
+    size: Tuple[int, int],
+    base_color: Tuple[int, int, int] = (60, 180, 90),  # أخضر DNA-inspired (حيوي، عضوي)
+    opacity: float = 0.35,                             # شفافية خفيفة (0.25–0.45 مثالي)
+    texture_noise: float = 0.02,                       # إضافة نسيج خفيف (DNA grain)
+    gradient_direction: Literal["radial", "horizontal", "vertical"] = "radial",
+) -> Image.Image:
+    """
+    إنشاء طبقة DNA Light شفافة أولى – أساس الإحياء الجيني
+    
+    Parameters:
+        size: حجم الصورة (width, height)
+        base_color: اللون الأساسي للطبقة (RGB)
+        opacity: شفافية الطبقة (0.0 = شفافة تمامًا، 1.0 = معتمة)
+        texture_noise: نسبة الضوضاء الخفيفة (DNA grain effect)
+        gradient_direction: اتجاه التدرج (radial = دائري، أفضل للإحساس بالحياة)
+    
+    Returns:
+        PIL.Image: طبقة RGBA شفافة جاهزة للدمج
+    """
+    width, height = size
+    
+    # إنشاء طبقة أساسية
+    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    
+    # إنشاء overlay بلون أساسي مع تدرج
+    overlay = Image.new("RGB", size, base_color)
+    
+    if gradient_direction == "radial":
+        # تدرج دائري (DNA helix feel)
+        center_x, center_y = width // 2, height // 2
+        for y in range(height):
+            for x in range(width):
+                dist = np.sqrt((x - center_x)**2 + (y - center_y)**2) / max(width, height)
+                alpha = int(255 * opacity * (1 - dist * 0.8))
+                overlay.putpixel((x, y), base_color)
+                layer.putpixel((x, y), base_color + (alpha,))
+    
+    elif gradient_direction == "horizontal":
+        for x in range(width):
+            alpha = int(255 * opacity * (1 - x / width))
+            for y in range(height):
+                layer.putpixel((x, y), base_color + (alpha,))
+    
+    elif gradient_direction == "vertical":
+        for y in range(height):
+            alpha = int(255 * opacity * (1 - y / height))
+            for x in range(width):
+                layer.putpixel((x, y), base_color + (alpha,))
+    
+    # إضافة نسيج خفيف (DNA grain)
+    if texture_noise > 0:
+        noise = np.random.normal(0, texture_noise * 30, (height, width, 3))
+        noise_img = Image.fromarray(np.clip(noise + np.array(overlay), 0, 255).astype(np.uint8))
+        layer = Image.composite(noise_img.convert("RGBA"), layer, layer.split()[3])
+    
+    return layer

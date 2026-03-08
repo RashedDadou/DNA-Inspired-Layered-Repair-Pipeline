@@ -1,0 +1,64 @@
+def geometric_repair_via_net(
+    img: Image.Image,
+    mask: Image.Image,
+    net: Image.Image,
+    prompt: str = "high quality, detailed geometry, realistic structure, sharp edges",
+    negative_prompt: str = "blurry, deformed, low detail, artifacts, extra limbs",
+    strength: float = 0.32,           # قوة الـ repair (0.25–0.40 مثالي للحفاظ على الـ identity)
+    steps: int = 22,                  # عدد الخطوات (20–30 كافي)
+    guidance_scale: float = 7.5,
+    controlnet_model_repo: str = "lllyasviel/sd-controlnet-union-sdxl-1.0",
+    sd_model_repo: str = "runwayml/stable-diffusion-inpainting",
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+) -> Image.Image:
+    """
+    إعادة ترميم الشكل الهندسي باستخدام الشبكة (Net) كـ control image
+    
+    Parameters:
+        img: الصورة الأصلية
+        mask: ماسك المنطقة المراد ترميمها
+        net: الشبكة الهيكلية الناتجة من generate_net_structure
+        prompt: وصف الترميم الهندسي
+        strength: قوة التأثير (منخفضة للحفاظ على الأصل)
+        steps: عدد الخطوات
+        guidance_scale: قوة الـ prompt
+    
+    Returns:
+        PIL.Image: الصورة بعد إعادة الترميم الهندسي
+    """
+    img = _ensure_rgb(img)
+    mask = mask.convert("L")
+    net = net.convert("RGB")
+
+    # تحميل ControlNet Union + Pipeline (يفضل تحميله مرة واحدة في __init__ لو كان كلاس)
+    controlnet = ControlNetModel.from_pretrained(
+        controlnet_model_repo, torch_dtype=torch.float16
+    ).to(device)
+
+    pipeline = StableDiffusionControlNetInpaintPipeline.from_pretrained(
+        sd_model_repo,
+        controlnet=controlnet,
+        torch_dtype=torch.float16,
+        safety_checker=None,
+    ).to(device)
+
+    pipeline.enable_attention_slicing()
+    pipeline.enable_model_cpu_offload()
+
+    # الترميم الهندسي
+    repaired = pipeline(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        image=img,
+        mask_image=mask,
+        control_image=net,
+        strength=strength,
+        num_inference_steps=steps,
+        guidance_scale=guidance_scale,
+    ).images[0]
+
+    # تلميع خفيف للنتيجة (اختياري)
+    repaired = ImageEnhance.Sharpness(repaired).enhance(1.10)
+    repaired = ImageEnhance.Contrast(repaired).enhance(1.05)
+
+    return repaired

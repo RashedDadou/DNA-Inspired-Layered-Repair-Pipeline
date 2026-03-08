@@ -1,0 +1,55 @@
+def dna_inspired_color_pulse(
+    img: Image.Image,
+    mask: Image.Image,
+    pulse_steps: int = 6,
+    positive_boost: float = 0.28,
+    negative_suppress: float = 0.22,
+    pulse_factor_decay: float = 0.65,
+    hue_mutation_strength: float = 8.0,
+    latent_mode: bool = False,  # ← الخيار الجديد
+    pipeline: Optional[StableDiffusionControlNetInpaintPipeline] = None,
+    strength: float = 0.18,  # للـ latent mode فقط
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+) -> Image.Image:
+    """
+    نبض DNA-inspired (pixel-level أو latent-level)
+    """
+    if not latent_mode:
+        # النسخة القديمة (pixel-level)
+        arr = np.array(img, dtype=np.float32)
+        mask_arr = np.array(mask.convert("L"), dtype=np.float32) / 255.0
+
+        for step in range(pulse_steps):
+            factor = 1.0 - (step / pulse_steps) * pulse_factor_decay
+            hue_shift = np.random.normal(0, hue_mutation_strength * factor) * mask_arr[..., None]
+            sat_boost = 1.0 + positive_boost * factor * mask_arr[..., None]
+            suppress = 1.0 - negative_suppress * factor * mask_arr[..., None]
+
+            hsv = cv2.cvtColor(arr.astype(np.uint8), cv2.COLOR_RGB2HSV).astype(np.float32)
+            hsv[..., 0] = (hsv[..., 0] + hue_shift[..., 0]) % 180
+            hsv[..., 1] = np.clip(hsv[..., 1] * sat_boost[..., 0] * suppress[..., 0], 0, 255)
+            hsv[..., 2] = np.clip(hsv[..., 2] * (1 + positive_boost * 0.18 * mask_arr[..., None]), 0, 255)
+
+            arr = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32)
+
+        return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+
+    else:
+        # Latent-level pulsing (أقوى – يحتاج pipeline)
+        if pipeline is None:
+            raise ValueError("Pipeline مطلوب للـ latent mode")
+
+        # تحويل الصورة إلى latent (placeholder – يحتاج vae)
+        # هنا نفترض إنك بتعمل encode/decode بـ VAE من الـ pipeline
+        # للبساطة، هنستخدم img2img خفيف كبديل
+        latent_result = pipeline(
+            prompt="enhance details, vibrant colors, realistic textures",
+            negative_prompt="blurry, artifacts, low quality",
+            image=img,
+            mask_image=mask,
+            strength=strength,
+            num_inference_steps=12,
+            guidance_scale=6.5,
+        ).images[0]
+
+        return latent_result

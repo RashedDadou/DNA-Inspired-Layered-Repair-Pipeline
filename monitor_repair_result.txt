@@ -1,0 +1,71 @@
+def monitor_repair_result(
+    original: Image.Image,
+    repaired: Image.Image,
+    mask: Image.Image,
+    min_lpips_gain: float = 0.005,     # أقل فرق مقبول في LPIPS
+    max_lpips_threshold: float = 0.32, # أعلى LPIPS مقبول
+    detail_loss_threshold: float = 0.08, # نسبة فقدان التفاصيل
+) -> Dict[str, any]:
+    """
+    Monitoring Module: تقييم النتيجة بعد الترميم
+    - يقيس: LPIPS، تشوهات، فقدان تفاصيل، ألوان
+    - يرجع تقرير + درجة جودة
+    """
+    from torchmetrics.image import LearnedPerceptualImagePatchSimilarity
+    import torch
+
+    lpips = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to("cuda" if torch.cuda.is_available() else "cpu")
+
+    # تحويل الصور إلى tensors
+    orig_tensor = torch.from_numpy(np.array(original)).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+    rep_tensor = torch.from_numpy(np.array(repaired)).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+
+    lpips_score = lpips(orig_tensor, rep_tensor).item()
+
+    # تقييم فقدان التفاصيل (Laplacian variance)
+    gray_orig = cv2.cvtColor(np.array(original), cv2.COLOR_RGB2GRAY)
+    gray_rep = cv2.cvtColor(np.array(repaired), cv2.COLOR_RGB2GRAY)
+    lap_orig = cv2.Laplacian(gray_orig, cv2.CV_64F).var()
+    lap_rep = cv2.Laplacian(gray_rep, cv2.CV_64F).var()
+    detail_loss = max(0, (lap_orig - lap_rep) / lap_orig) if lap_orig > 0 else 0
+
+    # تقرير
+    report = {
+        "lpips_score": lpips_score,
+        "detail_loss_ratio": detail_loss,
+        "overall_quality_score": round(100 - (lpips_score * 100 + detail_loss * 100) / 2, 1),
+        "needs_correction": lpips_score > max_lpips_threshold or detail_loss > detail_loss_threshold,
+        "issues": []
+    }
+
+    if lpips_score > max_lpips_threshold:
+        report["issues"].append("LPIPS مرتفع: جودة منخفضة")
+    if detail_loss > detail_loss_threshold:
+        report["issues"].append("فقدان تفاصيل ملحوظ")
+
+    return report
+
+
+def post_monitor_filter(
+    report: Dict,
+    original_prompt: str,
+    current_prompt: str,
+    max_iterations: int = 2,
+) -> Tuple[str, bool]:
+    """
+    Post-Monitor Filter: يولّد prompt تصحيحي موجه بناءً على تقرير Monitoring
+    """
+    if not report["needs_correction"]:
+        return current_prompt, False  # لا حاجة لتصحيح
+
+    correction_prompt = current_prompt
+
+    if "LPIPS مرتفع" in report["issues"]:
+        correction_prompt += ", sharper details, higher quality, realistic textures"
+
+    if "فقدان تفاصيل" in report["issues"]:
+        correction_prompt += ", enhance fine details, preserve original structure"
+
+    # يمكن إضافة المزيد من القواعد حسب التقرير
+
+    return correction_prompt, True  # يحتاج إعادة

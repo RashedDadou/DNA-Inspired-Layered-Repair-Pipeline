@@ -1,0 +1,115 @@
+def post_monitor_filter(
+    report: Dict,
+    original_prompt: str,
+    current_prompt: str,
+    max_iterations: int = 2,
+) -> Tuple[str, bool]:
+    """
+    Post-Monitor Filter المحسن: يولّد prompt تصحيحي بناءً على تقرير Monitoring
+    """
+    if not report["needs_correction"]:
+        return current_prompt, False  # النتيجة جيدة، ما فيش حاجة لتصحيح
+
+    correction_additions = []
+
+    # 1. مشاكل LPIPS مرتفع (جودة عامة منخفضة)
+    if report.get("lpips_score", 0.0) > 0.30:
+        correction_additions.append("sharper details, higher fidelity, realistic textures, 8k quality")
+
+    # 2. فقدان تفاصيل (detail loss)
+    if report.get("detail_loss_ratio", 0.0) > 0.08:
+        correction_additions.append("enhance fine details, preserve original structure, high resolution, sharp focus")
+
+    # 3. مشاكل ألوان (مثلاً saturation عالية أو منخفضة، color bleeding)
+    if "ألوان غريبة" in report.get("issues", []) or report.get("color_deviation", 0.0) > 0.15:
+        correction_additions.append("natural colors, balanced saturation, reduce color bleeding")
+
+    # 4. تشوهات بنيوية (warp/deformation)
+    if "تشوهات بنيوية" in report.get("issues", []):
+        correction_additions.append("perfect anatomy, no deformation, symmetrical face, accurate proportions")
+
+    # 5. إضافة عامة للتوازن
+    if correction_additions:
+        correction_additions.append("masterpiece, best quality, ultra detailed")
+
+    # دمج التعديلات في prompt جديد
+    new_prompt = current_prompt
+    if correction_additions:
+        new_prompt += ", " + ", ".join(correction_additions)
+
+    return new_prompt, True  # يحتاج إعادة
+
+
+
+
+
+# داخل full_dna_repair_pipeline
+
+# بعد النبض (pulsed_image)
+monitoring_report = monitor_repair_result(
+    original=input_image,
+    repaired=pulsed_image,
+    mask=mask,
+)
+
+print("\nMonitoring Report:")
+print(json.dumps(monitoring_report, indent=2, ensure_ascii=False))
+
+# Post-Monitor Filter + Decision Flow
+correction_prompt, needs_retry = post_monitor_filter(
+    report=monitoring_report,
+    original_prompt=filtered_prompt,
+    current_prompt=filtered_prompt,
+)
+
+final_image = pulsed_image
+retries_used = 0
+
+while needs_retry and retries_used < max_retries:
+    print(f"اكتشفنا مشكلة – إعادة ترميم (محاولة {retries_used + 1}/{max_retries})...")
+    
+    # إعادة الـ pulse أو الـ repair مع الـ correction_prompt
+    pulsed_image = dna_inspired_color_pulse(
+        img=repaired_geometry,  # أو أي خطوة سابقة
+        mask=mask,
+        prompt=correction_prompt,
+        pulse_steps=pulse_steps,
+        positive_boost=positive_boost,
+        negative_suppress=negative_suppress,
+    )
+    
+    # إعادة Monitoring
+    monitoring_report = monitor_repair_result(
+        original=input_image,
+        repaired=pulsed_image,
+        mask=mask,
+    )
+    
+    correction_prompt, needs_retry = post_monitor_filter(
+        report=monitoring_report,
+        original_prompt=filtered_prompt,
+        current_prompt=correction_prompt,
+    )
+    
+    retries_used += 1
+
+# Final Polish
+final = ImageEnhance.Sharpness(pulsed_image).enhance(final_sharpen)
+final = ImageEnhance.Contrast(final).enhance(final_contrast)
+final = ImageEnhance.Color(final).enhance(final_color)
+
+final.save(output_path)
+print(f"تم حفظ النتيجة النهائية → {output_path}")
+
+final_report = {
+    "final_lpips": monitoring_report.get("lpips_score", 0.0),
+    "final_detail_loss": monitoring_report.get("detail_loss_ratio", 0.0),
+    "final_quality_score": monitoring_report.get("overall_quality_score", 0.0),
+    "retries_used": retries_used,
+    "status": "success" if not needs_retry else "partial (max retries reached)",
+    "final_prompt_used": correction_prompt,
+    "issues_resolved": monitoring_report.get("issues", [])
+}
+
+return final, final_report
+

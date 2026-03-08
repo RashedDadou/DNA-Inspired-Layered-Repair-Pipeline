@@ -1,0 +1,104 @@
+def full_dna_repair_pipeline(
+    input_image: Image.Image,
+    raw_prompt: str,
+    mask: Optional[Image.Image] = None,  # ماسك المنطقة المنهارة (اختياري)
+    style_preferences: Optional[List[str]] = None,
+    pulse_steps: int = 6,
+    positive_boost: float = 0.28,
+    negative_suppress: float = 0.22,
+    use_colored_layers: bool = True,
+    blend_mode: Literal["density", "wave"] = "density",
+    final_sharpen: float = 1.14,
+    final_contrast: float = 1.06,
+    max_retries: int = 2,
+    output_path: str = "dna_repaired_final.jpg",
+) -> Tuple[Image.Image, Dict]:
+    """
+    الدالة الرئيسية الكاملة للترميم الـ DNA-inspired
+    تجمع كل الطبقات في سير عمل واحد
+    """
+    # ── 1. Input Prompt / Scene + Filter Prompt + Scene DNA Genes ────────
+    filtered_prompt, scene_genes = prepare_scene_prompt_and_genes(
+        raw_prompt=raw_prompt,
+        image=input_image,
+        style_preferences=style_preferences,
+    )
+    print("Filtered Prompt:", filtered_prompt)
+    print("Scene DNA Genes:", scene_genes)
+
+    # إنشاء ماسك إذا ما كان موجود (placeholder – يمكن تحسينه)
+    if mask is None:
+        mask = detect_dead_zones(input_image)  # من الطبقة السابقة
+
+    # ── 2. ControlNet Structure (إنتاج الشبكة Net) ────────────────────────
+    net = generate_net_structure(
+        img=input_image,
+        mask=mask,
+        control_type="union",
+        net_strength=0.68,
+        steps=18,
+    )
+
+    # ── 3. DNA Light Layer (الشفافة الأولى) ──────────────────────────────
+    dna_layer1 = create_dna_light_layer(input_image.size, opacity=0.38)
+
+    # ── 4. Geometric Repair via Net ────────────────────────────────────────
+    repaired_geometry = geometric_repair_via_net(
+        img=input_image,
+        mask=mask,
+        net=net,
+        prompt=filtered_prompt,
+        strength=0.32,
+        steps=22,
+    )
+
+    # ── 5. Colored DNA Layers (طبقات لونية مخصصة) ─────────────────────────
+    if use_colored_layers:
+        colored_layers = add_colored_dna_layers(
+            net=net,
+            mask=mask,
+            blend_mode=blend_mode,
+            opacity=0.52,
+        )
+        repaired_geometry = Image.alpha_composite(repaired_geometry.convert("RGBA"), colored_layers)
+
+    # ── 6. DNA-inspired Color Pulse (النبض الموجب/سالب) ───────────────────
+    pulsed_image = dna_inspired_color_pulse(
+        img=repaired_geometry,
+        mask=mask,
+        pulse_steps=pulse_steps,
+        positive_boost=positive_boost,
+        negative_suppress=negative_suppress,
+    )
+
+    # ── 7. Monitoring Module ───────────────────────────────────────────────
+    monitoring_report = monitor_repair_result(
+        original=input_image,
+        repaired=pulsed_image,
+        mask=mask,
+    )
+    print("\nMonitoring Report:")
+    print(json.dumps(monitoring_report, indent=2, ensure_ascii=False))
+
+    # ── 8. Post-Monitor Filter + Decision Flow ─────────────────────────────
+    correction_prompt, needs_retry = post_monitor_filter(
+        report=monitoring_report,
+        original_prompt=filtered_prompt,
+        current_prompt=filtered_prompt,
+    )
+
+    final_image = pulsed_image
+    if needs_retry and max_retries > 0:
+        print("اكتشفنا مشكلة – إعادة ترميم...")
+        # هنا تعيد استدعاء الـ pipeline مع correction_prompt
+        # (في الواقع: تعيد الخطوات 4–6 مع correction_prompt)
+        final_image = pulsed_image  # placeholder – استبدل بإعادة حقيقية
+
+    # ── 9. Final Polish & Output ──────────────────────────────────────────
+    final = ImageEnhance.Sharpness(final_image).enhance(final_sharpen)
+    final = ImageEnhance.Contrast(final).enhance(final_contrast)
+
+    final.save(output_path)
+    print(f"تم حفظ النتيجة النهائية → {output_path}")
+
+    return final, monitoring_report
