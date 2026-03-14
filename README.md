@@ -4,6 +4,15 @@ restore and revive damaged images in an intelligent genetic/organic way, with an
 Project Name: DNA-Inspired Layered Repair Pipeline (v2)
 Purpose: To restore and revive damaged images using intelligent genetic/organic methods, focusing on localized accuracy and bio-evidence.
 
+Key Techniques:
+
+DNA pulsing (positive then negative – viability then denaturation suppression) → A clever and innovative concept
+Using ControlNet Union locally first, then fallback on HF → A mature design
+Separating DndSeedColorEngine as an independent entity → An excellent decision (modularity)
+Attempting to create directed color layers on the edges of the net → Strong aesthetics
+Using Dirichlet distribution in genetic_random blending → A nice scientific touch
+Including monitor_dnd_color_mix → A beautiful analytical concept (if developed further)
+
 Release Date: 7 March 2026
 Developer: [Your Name] + Grok Collaboration
 Project Summary: The system mimics the process of genetic regeneration within an image by:
