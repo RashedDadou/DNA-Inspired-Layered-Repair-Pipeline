@@ -1,0 +1,10 @@
+gradio>=4.0.0
+huggingface-hub>=0.23.0
+diffusers>=0.20.0
+torch
+torchvision
+opencv-python
+pillow
+numpy
+scikit-image
+scipy

@@ -1,0 +1,16 @@
+// pyrightconfig.json
+{
+    "include": [
+        "."
+    ],
+    "typeCheckingMode": "basic",
+    "stubPath": ".",
+    "extraPaths": [],
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "pythonVersion": "3.10", // أو إصدارك
+            "pythonPath": "./.venv/bin/python" // أو مسار python بتاعك
+        }
+    ]
+}
