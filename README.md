@@ -267,7 +267,126 @@ Union Multi-Control SDXL Inpainting / Img2Img Pipeline
 
 A powerful and specialized tool for building an image generation and editing pipeline using **Stable Diffusion XL** with **ControlNet Union**.
 
+# Union Multi-Control SDXL Inpainting / Img2Img Pipeline
 
+**File:** `union_multi_inpainting.py`
+
+**Version:** 2026 – R.D Media
+
+---
+
+### Overview
+
+`union_multi_inpainting.py` is a powerful and specialized core engine for building a pipeline for generating and editing images using Stable Diffusion XL with UnionControlNet.
+
+The file aims to provide advanced and stable control when using multiple Control Maps simultaneously (Multi-Control), with full support for Inpainting and Img2Img, and professional merging tools.
+
+---
+
+### Main Purpose of Designing This Code
+
+This file was designed to be a **essential tool** that excels in the following areas:
+
+- True **Multi-Control** support (OpenPose + Depth + Canny + Scribble + Lineart + SoftEdge + HED + MLSD + Tile + others)
+- Professional **Inpainting** using a mask with seamless blending
+- Powerful **Img2Img** with precise control over the modulation strength
+- Resolution of common technical issues such as **size mismatch** between Control Maps
+- Efficient VRAM management with three modes (balanced, very_low, extreme)
+- Saving rich and organized EXIF ​​metadata
+
+---
+
+### Why Was This File Designed?
+
+
+Most available tools (Automatic1111, ComfyUI, InvokeAI, etc.) encounter difficulties when using **ControlNet Union** with multiple controls simultaneously, such as:
+
+- Tensor size errors
+- High VRAM consumption
+- Unprofessional blending between the generated and original images
+- Lack of stability and flexibility
+
+This file is designed to be a **clean and stable solution** to these problems, focusing on:
+- Performance
+- Flexibility
+- Ease of scaling
+- Professional use (individual or studio)
+
+---
+
+### Key Features
+
+- **Full Multi-Control**: Supports multiple controls in the same inference
+- **Automatic Control Size Unification** (resolves size mismatch issue)
+- **Professional Poisson Blending** with fallback to Gaussian Feather
+- **Advanced VRAM Management** (balanced/very_low/extreme) + xformers + torch.compile
+- **Rich EXIF ​​Metadata** (Prompt, Seed, Steps, CFG, Strength, Controls, VRAM usage...)
+- Flexible design allows for easy addition of new controls
+- Support for Auto Controls (OpenPose + Depth) + User Controls
+
+---
+
+### Areas of Use
+
+- Character Consistency
+- High-Resolution Background Changes
+- Clothing and Accessory Redesign
+- Repairing Damaged or Low-Detail Images
+- Creating Concept Art and Character Sheets
+- Batch Processing and Workflow Automation
+
+---
+
+### Current Project Status
+
+- ✅ Running Stably
+- ✅ Multi-Control + Inpainting + Blending Working Successfully
+- ✅ Control Size Consistency Resolved
+- 🔄 Under Comprehensive Improvement:
+
+- Code Restructuring and Class Separation
+
+- Improvement of Type Hints and Error Handling
+
+- Addition of a Central Config System
+
+- Improvement of Logging
+
+---
+
+### Requirements
+
+- Python 3.10+
+- PyTorch 2.0+
+- Diffusers ≥ 0.20.0
+- xformers (Recommended)
+- ControlNet Union Model (`xinsir/controlnet-union-sdxl-1.0`)
+
+(See `requirements.txt` for full details)
+
+---
+
+### License
+
+MIT License
+
+---
+
+**Developed by R.D Media**
+
+© 2026
+
+---
+
+---
+
+This version is ready to copy and upload directly as `README.md`.
+
+Do you need any modifications before uploading?
+
+(For example: making it shorter, adding a Showcase section, or changing any text?)
+
+Just let me know and I'll edit it immediately.
 ---
 
 ### 🎯 Main Objective
