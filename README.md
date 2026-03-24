@@ -179,7 +179,6 @@ The pipeline treats damaged or masked image regions as areas requiring "genetic 
 
 ## Installation
 
-```bash
 # Recommended: create a dedicated environment
 conda create -n dna-pulse python=3.10
 conda activate dna-pulse
@@ -258,3 +257,123 @@ ControlNet Union (xinsir)
 Stable Diffusion XL
 Inspired by biological diffusion models and fantasy world-building aesthetics
 
+----------------------------------------------------------------------------------------------------------
+
+## General overview of the purpose of this code: ( union_multi_inpainting.py )
+
+Union Multi-Control SDXL Inpainting / Img2Img Pipeline
+
+**Enhanced Version 2026 – R.D Media**
+
+A powerful and specialized tool for building an image generation and editing pipeline using **Stable Diffusion XL** with **ControlNet Union**.
+
+
+---
+
+### 🎯 Main Objective
+
+To provide high-precision control over the generation process through simultaneous **Multi-Control** support, focusing on:
+
+- Professional **Inpainting** using a mask
+
+- Powerful and accurate **Img2Img**
+
+- High-quality **Poisson Blending**
+- Saving complete EXIF ​​Metadata
+
+---
+
+### ✨ Key Features
+
+- Full **Multi-Control** support (OpenPose + Depth + Canny + Scribble + Lineart + SoftEdge + HED + MLSD + Tile + ... etc.)
+- Automatically standardizes Control Map sizes (solves the common size mismatch issue)
+- Support for multiple VRAM saving modes (`balanced` | `very_low` | `extreme`)
+- **Poisson Blending** with fallback to Gaussian Feather
+- Rich EXIF ​​Metadata saving (Prompt, Seed, Steps, CFG, Strength, Controls, VRAM usage...)
+
+- Flexible design suitable for individual use and automation (Batch Processing)
+
+---
+
+### 🎨 Areas of Use
+
+- Character Consistency
+- High-precision background changes
+- Clothing and accessory redesign
+- Repair and enhance damaged or low-quality images
+- Professional-quality concept art and character sheets
+- Automated workflow for small studios and artists
+
+---
+
+### ⚡ Why is this project unique?
+
+- It focuses specifically on **ControlNet Union** in a stable and efficient way (rare in open-source scripts)
+- It cleanly combines **Multi-Control + Inpainting + Poisson Blending**
+- It solves common technical problems such as tensor size and VRAM management
+- It is designed to be a strong foundation for larger future projects
+
+### Quick comparison with similar projects
+
+| Project | Level of similarity | Points that distinguish our project |
+|-------------------------------|----------------|--------------------------|
+
+| InvokeAI | High | More comprehensive but heavier |
+
+| ComfyUI + Union Nodes | High | Visually flexible but very complex |
+
+| SD.Next | Medium | Less focus on Union |
+
+| Automatic1111 + ControlNet | Medium | Weaker and less stable Union support |
+
+| xinsir Official Examples | Low | Only simple examples |
+
+**Conclusion**: This project is one of the cleanest and most powerful scripts currently available for **ControlNet Union SDXL**, especially for integrating Multi-Control with Inpainting and Metadata Management.
+
+---
+
+### 🛠 Current Project Status
+
+- ✅ Running Stably
+- ✅ Multi-Control + Inpainting Support
+- ✅ Control Size Consolidation
+- ✅ Poisson Blending
+- ✅ EXIF ​​Metadata
+- 🔄 Under Improvement (Refactoring, Class Separation, Config Management, Advanced Logging)
+
+---
+
+### 📌 Requirements
+
+- Python 3.10+
+- PyTorch 2.0+
+- Diffusers ≥ 0.20.0
+- ControlNet Union Model (`xinsir/controlnet-union-sdxl-1.0`)
+- xformers (Recommended for VRAM)
+
+(See `requirements.txt` for full details)
+
+---
+
+### 🚀 How to Use
+
+(This section will be updated after refactoring is complete)
+
+---
+
+### 📄 License
+
+MIT License
+
+---
+
+### 🙏 Acknowledgments and Contributions
+
+This project is part of a larger project called **DNA Repair Pipeline** — a DNA-inspired image repair and enhancement system.
+
+Contributions are always welcome.
+
+---
+
+**Developed by R.D Media**
+© 2026
